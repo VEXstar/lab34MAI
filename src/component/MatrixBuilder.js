@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 import {getOutgoers} from "react-flow-renderer";
 import {useEffect, useState} from "react";
-import {evaluate} from "mathjs";
+import {evaluate, norm} from "mathjs";
 
 
 const comparePairs = (a, b) => {
@@ -25,6 +25,7 @@ const comparePairs = (a, b) => {
 export const MatrixBuilder = ({graph, names, setData}) => {
 
     const [matrix, setMatrix] = useState({});
+    const [selfVectors, setSelfVector] = useState({});
     const toast = useToast();
     const levels = levelFinder(graph, names).sort(comparePairs);
 
@@ -32,11 +33,40 @@ export const MatrixBuilder = ({graph, names, setData}) => {
             if (setData) {
                 setData({matrix: matrix, levels: levels})
             }
+            const generatedNames = Object.keys(matrix);
+            let calculatedVectors = generatedNames.map(cal=> {
+                const oneMat = matrix[cal];
+                let vector = {self:[],norm:[]}
+                let sum = 0;
+                console.log(cal)
+                console.table(oneMat);
+                for (let i= 0; i <oneMat.length;i++) {
+                    let mul = 1;
+                    for(let j = 0; j<oneMat.length;j++) {
+                        if(oneMat[j][i] !== "NaN") {
+                            mul *= evaluate(oneMat[i][j]);
+                        }
+                    }
+                    console.log(i,mul)
+                    const x = Math.pow(mul,1/oneMat.length);
+                    sum += x;
+                    vector.self.push(x);
+                }
+                vector.self.forEach(elem=>{
+                    vector.norm.push(elem/sum)
+                });
+                return vector;
+            });
+            let named = {};
+            for (let i = 0; i <generatedNames.length;i++) {
+                named[generatedNames[i]] = calculatedVectors[i];
+            }
+            setSelfVector(named);
         },
         [matrix])
 
     const accordionItems = levels?.map(elem => {
-        return prepTable(elem, matrix, (val, i, j, name, size) => {
+        return prepTable(elem, matrix, selfVectors,(val, i, j, name, size) => {
             let clone = JSON.parse(JSON.stringify(matrix));
             if (!matrix[name] || matrix[name].length !== size) {
                 let zeroMatrix = [];
@@ -86,7 +116,7 @@ export const MatrixBuilder = ({graph, names, setData}) => {
                 clone[name][j][i] = "1";
             }
             else {
-                clone[name][j][i] = (val !== "" ? "1/" : "NaN") + val;
+                clone[name][j][i] = val !== "" ? ("1/" + val) : clone[name][j][i];
             }
             setMatrix(clone);
         });
@@ -131,9 +161,10 @@ const recLevelFinder = (graph, node, level, names, pairs) => {
 }
 
 
-const prepTable = (pairObj, matrix, setMatrix) => {
+const prepTable = (pairObj, matrix, selfVectors,setMatrix) => {
     const lvl = pairObj.level + 1;
     const mat = matrix[pairObj.parent.id];
+    const currVectors = selfVectors[pairObj.parent.id];
     return (
         <AccordionItem>
             <h2>
@@ -154,6 +185,12 @@ const prepTable = (pairObj, matrix, setMatrix) => {
                                 <th>{elem.prettyName}</th>
                             )
                         })}
+                        <th style={{borderRight:"solid 1px black"}}>
+                            ВСЗ
+                        </th>
+                        <th>
+                            НСЗ
+                        </th>
                     </tr>
                     </thead>
                     <tbody>
@@ -175,6 +212,12 @@ const prepTable = (pairObj, matrix, setMatrix) => {
                                             )
                                         })
                                     }
+                                    <td style={{borderRight:"solid 1px black"}}>
+                                        {currVectors&&Math.round(currVectors.self[i] * 100) / 100}
+                                    </td>
+                                    <td>
+                                        {currVectors&&Math.round(currVectors.norm[i] * 100) / 100}
+                                    </td>
                                 </tr>
                             )
                         })

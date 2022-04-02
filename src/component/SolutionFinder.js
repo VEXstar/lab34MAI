@@ -82,7 +82,7 @@ export const SolutionFinder = ({matrix, levels, graph, altNames}) => {
                 <Td>{elem.lvl + 1}</Td>
                 <Td>{elem.lambda?.toFixed(2)}</Td>
                 <Td>{elem.is?.toFixed(2)}</Td>
-                <Td>{elem.os?.toFixed(2)}</Td>
+                <Td>{elem.os?.toFixed(2)}%</Td>
             </Tr>
         )
     })
